@@ -2,12 +2,13 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from agents import Agent, FunctionTool, function_tool
 from calendar_client import CalendarClient
+from zoneinfo import ZoneInfo
 
 client = CalendarClient();
+time_zone = ZoneInfo("Africa/Lagos")
 
-class EventDateTime(BaseModel):
-    dt: datetime = Field(..., description="Event start or end datetime in ISO 8601 format")
-    timezone: str = Field(..., description="Timezone, e.g., 'Africa/Lagos'")
+class DateTime(BaseModel):
+    time: datetime = Field(..., description="Event start datetime in RFC3339 format with timezone Africa/Lagos")
 
 class Event(BaseModel):
     summary: str = Field(..., description="Short title for the event")
@@ -23,11 +24,11 @@ def reformat_event(ai_event):
         "location": ai_event.location,
         "description": ai_event.description,
         "start": {
-            "dateTime": ai_event.start.isoformat(),
+            "dateTime": ai_event.start.astimezone(time_zone).isoformat(),
             "timeZone": "Africa/Lagos"   # you can adjust based on user input
         },
         "end": {
-            "dateTime": ai_event.end.isoformat(),
+            "dateTime": ai_event.end.astimezone(time_zone).isoformat(),
             "timeZone": "Africa/Lagos"
         },
     }
@@ -53,6 +54,27 @@ def add_event_to_calendar(event: Event) -> str:
         f"- Description: {event.description or 'N/A'}"
     )
 
+@function_tool
+def get_calendar_events(time_min: DateTime, time_max: DateTime) -> str:
+    """Get events within a time range from the calender.
+
+    Args:
+        time_min: the lower bound for the event start time (inclusive).
+        time_max: the upper bound for the event start time (exclusive).
+        Both must be in RFC3339 format (YYYY-MM-DDTHH:MM:SS+00:00).
+    """
+    start_time = time_min.time.astimezone(time_zone).isoformat()
+    end_time = time_max.time.astimezone(time_zone).isoformat()
+    client.list_events(start_time, end_time)
+    # In real life, we'd insert this into Google Calendar or a database
+    return (
+        f"✅ Event '{event.summary}' added\n"
+        f"- Start: {event.start.dt} ({event.start.timezone})\n"
+        f"- End: {event.end.dt} ({event.end.timezone})\n"
+        f"- Location: {event.location or 'N/A'}\n"
+        f"- Description: {event.description or 'N/A'}"
+    )
+
 
 calendar_agent = Agent(
     name="calendar_agent",
@@ -62,5 +84,5 @@ calendar_agent = Agent(
         "you must call the appropriate tool. "
         "You never modify the calendar directly, you always use the tools."
     ),
-    tools=[add_event_to_calendar],
+    tools=[add_event_to_calendar, get_calendar_events],
 )

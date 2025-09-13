@@ -27,25 +27,25 @@ class CalendarClient:
     # def reschedule_event(self, event_id, new_time):
 
 
-    # def list_events(self, start_time, end_time):
-        
+    def list_events(self, time_min, time_max):
+        events_result = self.service.events().list(
+            calendarId=calendar_id,
+            timeMin=time_min,
+            timeMax=time_max,
+            singleEvents=True,
+            orderBy="startTime"
+        ).execute()
+        events = events_result.get("items", [])
+        if not events:
+            print("No upcoming events.")
+        else:
+            for event in events:
+                start = event["start"].get("dateTime", event["start"].get("date"))
+                print(start, event["summary"])
 
     # def check_free_slots(self, start_time, end_time):
 
 
-# service = build("calendar", "v3", credentials=credentials)
 
-# events_result = service.events().list(
-#     calendarId=CALENDAR_ID,
-#     maxResults=5,
-#     singleEvents=True,
-#     orderBy="startTime"
-# ).execute()
 
-# events = events_result.get("items", [])
-# if not events:
-#     print("No upcoming events.")
-# else:
-#     for event in events:
-#         start = event["start"].get("dateTime", event["start"].get("date"))
-#         print(start, event["summary"])
+
